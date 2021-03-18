@@ -9,7 +9,7 @@ author-email = "no_mail@nomail.com"
 home-page = "https://github.com/sander76/qrabber"
 classifiers = ["License :: OSI Approved :: MIT License"]
 requires-python=">=3.7"
-requires=["aio-wx-widgets","winrt","pyzbar","numpy"]
+requires=["aio-wx-widgets","winrt","pyzbar"]
 keywords=["wxpyton","winrt","webcam","scanner","qrcode","qr-code"]
 
 [tool.flit.metadata.requires-extra]
