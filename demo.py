@@ -36,7 +36,9 @@ class MainWindow(DefaultFrame):
         await self.controller.start_scan()
 
     async def _on_stop(self, event):
+
         print("stopping")
+        await self.controller.stop_scan()
 
 
 if __name__ == "__main__":

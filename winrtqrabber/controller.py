@@ -14,8 +14,9 @@ class Controller:
         self.view = view
 
     async def start_scan(self):
-        await self._model.start(self.view.set_frame,)
+        await self._model.start(self.view.set_frame)
 
-    def stop_scan(self, result: Optional["Decoded"] = None):
+    async def stop_scan(self, result: Optional["Decoded"] = None):
+        await self._model.stop()
         if result:
             print(result)

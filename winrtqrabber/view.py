@@ -55,15 +55,14 @@ class ScannerView(wx.Panel):
     def set_frame(self, sender, frame):
         """Populate the image with raw data."""
 
-        # print(f"getting frame: {frame}")
         try:
             last_frame = sender.try_acquire_latest_frame()
             video_frame = last_frame.video_media_frame
-
             bitmap: SoftwareBitmap = video_frame.software_bitmap
         except Exception as err:
             _LOGGER.exception(err)
-            raise err from None
+            return
+            # raise err from None
 
         bitmap = SoftwareBitmap.convert(
             bitmap, BitmapPixelFormat.RGBA8, BitmapAlphaMode.PREMULTIPLIED
