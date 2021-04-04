@@ -56,6 +56,7 @@ class ScannerView(wx.Panel):
         """Populate the image with raw data."""
 
         try:
+            _LOGGER.debug("populating view.")
             last_frame = sender.try_acquire_latest_frame()
             video_frame = last_frame.video_media_frame
             bitmap: SoftwareBitmap = video_frame.software_bitmap

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from winrt.windows.devices.enumeration import DeviceClass, DeviceInformation
@@ -71,7 +70,7 @@ class WinrtCapture:
     _media_capture = None
     _media_frame_reader = None
 
-    async def _find_camera(self) -> ClaimedBarcodeScanner:
+    async def _find_camera(self) -> str:
         try:
             camera = await get_barcode_scanner()
             _LOGGER.debug("Claiming the scanner")
@@ -90,10 +89,12 @@ class WinrtCapture:
             await self._camera.start_software_trigger_async()
             # await self.start_capturing(camera.video_device_id)
 
-            await self.create_frame_reader(camera.video_device_id)
+            # await self.create_frame_reader(camera.video_device_id)
 
         except Exception as err:
             _LOGGER.exception(err)
+        else:
+            return camera.video_device_id
 
     def _on_data_received(
         self, sender: ClaimedBarcodeScanner, args: BarcodeScannerDataReceivedEventArgs
@@ -123,12 +124,13 @@ class WinrtCapture:
 
     async def start(self, frame_received_callback):
         _LOGGER.info("Starting webcam")
-        await self._find_camera()
-        await asyncio.sleep(4)
+        device_id = await self._find_camera()
+        # await asyncio.sleep(4)
+        await self.create_frame_reader(device_id, frame_received_callback)
         #
         # self._media_capture = MediaCapture()
 
-    async def create_frame_reader(self, video_device_id):
+    async def create_frame_reader(self, video_device_id, frame_received_callback):
         self._media_capture = MediaCapture()
         group, color_source = await find_color_source()
 
@@ -157,8 +159,8 @@ class WinrtCapture:
         self._media_capture.dispose()
 
 
-def frame_received_callback(sender, frame):
-    print(frame)
+# def frame_received_callback(sender, frame):
+#     print(frame)
 
 
 #
