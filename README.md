@@ -2,6 +2,9 @@
 
 Winrt and WxPython webcam viewer.
 
-Run the demo file for a demo ;-)
+Attempting to make use of Winrt to access the webcam and get qr-code scanning working.
 
-- todo: implement qr code scanning. reference: https://github.com/sander76/qrabber
+For barcode parsing it makes use of the pyzbar lib.
+Look at the sdk_decoder branch for decoding using Winrt.
+
+Run the demo file for a demo.
