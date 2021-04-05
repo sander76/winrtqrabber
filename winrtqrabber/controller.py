@@ -14,6 +14,8 @@ class Controller:
         self.view = view
 
     async def start_scan(self):
+        resolution = await self._model.prepare_webcam()
+        self.view.set_preview_size(*resolution)
         await self._model.start(self.view.set_frame)
 
     async def stop_scan(self, result: Optional["Decoded"] = None):

@@ -1,11 +1,15 @@
 import logging
-from typing import Callable
+from typing import Callable, Optional, Tuple
 
-from winrt.windows.devices.enumeration import DeviceClass, DeviceInformation
 from winrt.windows.devices.pointofservice import (
     BarcodeScanner,
     BarcodeScannerDataReceivedEventArgs,
     ClaimedBarcodeScanner,
+)
+from winrt.windows.graphics.imaging import (
+    BitmapAlphaMode,
+    BitmapPixelFormat,
+    SoftwareBitmap,
 )
 from winrt.windows.media.capture import (
     MediaCapture,
@@ -23,30 +27,20 @@ from winrt.windows.security.cryptography import (
     BinaryStringEncoding,
     CryptographicBuffer,
 )
+from winrt.windows.storage.streams import Buffer
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def find_camera():
-    """Find camera in a very optimistic way.
-
-    Just assumes there actually is a camera.
-    """
-
-    devices = await DeviceInformation.find_all_async(DeviceClass.VIDEO_CAPTURE)
-    device = devices[0]
-    _LOGGER.info(f"Found a webcam {device} with id {device.id}")
-    return devices[0]
-
-
-async def get_barcode_scanner() -> BarcodeScanner:
-    # web_cam = await find_camera()
-    # scanner = await BarcodeScanner.from_id_async(web_cam.id)
+async def get_barcode_scanner() -> Optional[BarcodeScanner]:
     _LOGGER.info("Looking for an available barcode scanner.")
     scanner = await BarcodeScanner.get_default_async()
-    _LOGGER.debug(
-        f"Found a scanner: {scanner} with video id: {scanner.video_device_id}"
-    )
+    if scanner:
+        _LOGGER.info(
+            f"Found a scanner: {scanner} with video id: {scanner.video_device_id}"
+        )
+    else:
+        _LOGGER.info("No webcam barcode scanner found or unable to access.")
     return scanner
 
 
@@ -88,13 +82,34 @@ class WinrtCapture:
     _camera = None
     _media_capture = None
     _media_frame_reader = None
+    _barcode_scanner = None
+    _ui_update: Optional[Callable[[bytearray], None]] = None
 
-    async def _find_camera(self) -> str:
+    async def start(self, frame_received_callback: Callable[[bytearray], None]):
+        _LOGGER.info("Starting webcam")
+        await self._start_scanner()
+        self._ui_update = frame_received_callback
+        await self._start_preview()
+
+    async def prepare_webcam(self) -> Tuple[int, int]:
+        """Prepare the webcam.
+
+        Returns:
+            A tuple containing the resolution.
+        """
+        _LOGGER.info("Preparing webcam.")
+        await self._prepare_barcode_scanner()
+        resolution = await self._prepare_preview(self._barcode_scanner.video_device_id)
+        return resolution
+
+    async def _start_preview(self):
+        await self._media_frame_reader.start_async()
+
+    async def _prepare_barcode_scanner(self):
         try:
-            camera = await get_barcode_scanner()
+            self._barcode_scanner = await get_barcode_scanner()
             _LOGGER.debug("Claiming the scanner")
-            self._camera = await camera.claim_scanner_async()
-
+            self._camera = await self._barcode_scanner.claim_scanner_async()
             _LOGGER.debug("Adding callback")
             self._camera.add_data_received(self._on_data_received)
             _LOGGER.debug("enabling automatic decoding.")
@@ -103,17 +118,16 @@ class WinrtCapture:
             await self._camera.enable_async()
             _LOGGER.debug("finished initializing")
 
-            # this command activates the actual webcam. Without it, this does not work.
-            # await self._camera.show_video_preview_async()
-            await self._camera.start_software_trigger_async()
-            # await self.start_capturing(camera.video_device_id)
-
-            # await self.create_frame_reader(camera.video_device_id)
-
         except Exception as err:
             _LOGGER.exception(err)
-        else:
-            return camera.video_device_id
+            raise err from None
+
+    async def _start_scanner(self):
+        """Start the barcode scanner."""
+        try:
+            await self._camera.start_software_trigger_async()
+        except Exception as err:
+            _LOGGER.exception(err)
 
     def _on_data_received(
         self, sender: ClaimedBarcodeScanner, args: BarcodeScannerDataReceivedEventArgs
@@ -125,17 +139,7 @@ class WinrtCapture:
         except Exception as err:
             _LOGGER.exception(err)
 
-    async def start(self, frame_received_callback):
-        _LOGGER.info("Starting webcam")
-        device_id = await self._find_camera()
-        # await asyncio.sleep(4)
-        await self.create_frame_reader(device_id, frame_received_callback)
-        #
-        # self._media_capture = MediaCapture()
-
-    async def create_frame_reader(
-        self, video_device_id, frame_received_callback: Callable[[bytearray], None]
-    ):
+    async def _prepare_preview(self, video_device_id) -> Tuple[int, int]:
         self._media_capture = MediaCapture()
         group, color_source = await find_color_source()
 
@@ -155,55 +159,49 @@ class WinrtCapture:
         self._media_frame_reader = await self._media_capture.create_frame_reader_async(
             color_frame_source
         )
-        self._media_frame_reader.add_frame_arrived(frame_received_callback)
+        self._media_frame_reader.add_frame_arrived(self._frame_received)
 
-        await self._media_frame_reader.start_async()
+        return (
+            color_frame_format.video_format.width,
+            color_frame_format.video_format.height,
+        )
 
-    # def _frame_received(self,ui_update:Callable[[bytearray],None]):
+    def _frame_received(self, sender, frame):
+        """Process an incoming preview frame.
+
+        Turns the data into a bytearray containing bitmap data.
+        """
+        if self._ui_update is None:
+            _LOGGER.error("No ui update callback function defined.")
+            return
+        try:
+            # _LOGGER.debug("populating view.")
+            last_frame = sender.try_acquire_latest_frame()
+            if last_frame is None:
+                return
+            video_frame = last_frame.video_media_frame
+            bitmap: SoftwareBitmap = video_frame.software_bitmap
+        except Exception as err:
+            _LOGGER.exception(err)
+            return
+            # raise err from None
+
+        bitmap = SoftwareBitmap.convert(
+            bitmap, BitmapPixelFormat.RGBA8, BitmapAlphaMode.PREMULTIPLIED
+        )
+
+        try:
+            length = 4 * bitmap.pixel_height * bitmap.pixel_width
+            buffer = Buffer(length)
+            bitmap.copy_to_buffer(buffer)
+
+            b_array = bytearray(CryptographicBuffer.copy_to_byte_array(buffer))
+
+            self._ui_update(b_array)
+
+        except Exception as err:
+            _LOGGER.exception(err)
 
     async def stop(self):
         await self._media_frame_reader.stop_async()
         self._media_capture.dispose()
-
-
-# def frame_received_callback(sender, frame):
-#     print(frame)
-
-
-#
-# async def capture(on_arrived_call_back):
-#     group, color_source = await find_color_source()
-#     webcam = await find_camera()
-#     print(webcam)
-#
-#     mediacapture = MediaCapture()
-#
-#     settings = MediaCaptureInitializationSettings()
-#     settings.source_group = group
-#     settings.sharing_mode = MediaCaptureSharingMode.EXCLUSIVE_CONTROL
-#     settings.memory_preference = MediaCaptureMemoryPreference.CPU
-#     settings.streaming_capture_mode = StreamingCaptureMode.VIDEO
-#
-#     await mediacapture.initialize_async(settings)
-#
-#     color_frame_source = mediacapture.frame_sources[color_source.id]
-#     color_frame_format = get_supported_frame_format(color_frame_source)
-#
-#     await color_frame_source.set_format_async(color_frame_format)
-#
-#     frame_reader = await mediacapture.create_frame_reader_async(color_frame_source)
-#     frame_reader.add_frame_arrived(on_arrived_call_back)
-#
-#     await frame_reader.start_async()
-#     print("capturing")
-#     await asyncio.sleep(10)
-#
-#
-# if __name__ == "__main__":
-#
-#     def on_arrived(sender, arrived_frame):
-#         print(arrived_frame)
-#
-#     loop = asyncio.get_event_loop()
-#     loop.run_until_complete(capture(on_arrived))
-#     # capture()
