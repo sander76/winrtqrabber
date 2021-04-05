@@ -1,4 +1,5 @@
 import logging
+from typing import Callable
 
 from winrt.windows.devices.enumeration import DeviceClass, DeviceInformation
 from winrt.windows.devices.pointofservice import (
@@ -121,8 +122,6 @@ class WinrtCapture:
             _LOGGER.info("Barcode data scanned")
             print(f"label : {get_data_string(args.report.scan_data_label)}")
             print(f"data  : {get_data_string(args.report.scan_data)}")
-            # print(args.report.scan_data_label)
-            # print(f"data: {args.report.scan_data}")
         except Exception as err:
             _LOGGER.exception(err)
 
@@ -134,7 +133,9 @@ class WinrtCapture:
         #
         # self._media_capture = MediaCapture()
 
-    async def create_frame_reader(self, video_device_id, frame_received_callback):
+    async def create_frame_reader(
+        self, video_device_id, frame_received_callback: Callable[[bytearray], None]
+    ):
         self._media_capture = MediaCapture()
         group, color_source = await find_color_source()
 
@@ -157,6 +158,8 @@ class WinrtCapture:
         self._media_frame_reader.add_frame_arrived(frame_received_callback)
 
         await self._media_frame_reader.start_async()
+
+    # def _frame_received(self,ui_update:Callable[[bytearray],None]):
 
     async def stop(self):
         await self._media_frame_reader.stop_async()

@@ -45,13 +45,15 @@ class ScannerView(wx.Panel):
         self._mirror_x = mirror_x
         self._mirror_y = mirror_y
 
-        # self._matrix = wx.AffineMatrix2D()
-        # self._matrix.Scale(1,1) # this should be (-1,1) to allow for horizontal flip. But that does not work.
-
-        client_dc = wx.WindowDC(self)
+        # client_dc = wx.WindowDC(self)
+        self._matrix = wx.AffineMatrix2D()
+        self._matrix.Translate(dx=640, dy=0)
+        self._matrix.Scale(
+            -1, 1
+        )  # this should be (-1,1) to allow for horizontal flip. But that does not work.
         # client_dc.SetTransformMatrix(self._matrix)
         self._buffered_dc = wx.BufferedDC(
-            client_dc, wx.NullBitmap, wx.BUFFER_VIRTUAL_AREA
+            wx.ClientDC(self), wx.NullBitmap, wx.BUFFER_VIRTUAL_AREA
         )
 
     def on_show(self, event):
@@ -90,8 +92,8 @@ class ScannerView(wx.Panel):
             )
 
             client_cd = wx.WindowDC(self)
-            # Trying to flip the image horizontally. Not working yet.
-            # client_cd.SetTransformMatrix(self._matrix)
+            client_cd.SetTransformMatrix(self._matrix)
+
             try:
                 wx.BufferedDC(client_cd, self.buffer, wx.BUFFER_VIRTUAL_AREA)
             except Exception as err:
