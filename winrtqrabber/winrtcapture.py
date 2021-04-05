@@ -204,4 +204,4 @@ class WinrtCapture:
 
     async def stop(self):
         await self._media_frame_reader.stop_async()
-        self._media_capture.dispose()
+        await self._camera.disable_async()
