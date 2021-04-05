@@ -6,7 +6,8 @@ from winrt.windows.graphics.imaging import (
     BitmapPixelFormat,
     SoftwareBitmap,
 )
-from winrt.windows.storage.streams import Buffer, DataReader
+from winrt.windows.security.cryptography import CryptographicBuffer
+from winrt.windows.storage.streams import Buffer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,8 +44,14 @@ class ScannerView(wx.Panel):
 
         self._mirror_x = mirror_x
         self._mirror_y = mirror_y
+
+        # self._matrix = wx.AffineMatrix2D()
+        # self._matrix.Scale(1,1) # this should be (-1,1) to allow for horizontal flip. But that does not work.
+
+        client_dc = wx.WindowDC(self)
+        # client_dc.SetTransformMatrix(self._matrix)
         self._buffered_dc = wx.BufferedDC(
-            wx.ClientDC(self), wx.NullBitmap, wx.BUFFER_VIRTUAL_AREA
+            client_dc, wx.NullBitmap, wx.BUFFER_VIRTUAL_AREA
         )
 
     def on_show(self, event):
@@ -56,8 +63,10 @@ class ScannerView(wx.Panel):
         """Populate the image with raw data."""
 
         try:
-            _LOGGER.debug("populating view.")
+            # _LOGGER.debug("populating view.")
             last_frame = sender.try_acquire_latest_frame()
+            if last_frame is None:
+                return
             video_frame = last_frame.video_media_frame
             bitmap: SoftwareBitmap = video_frame.software_bitmap
         except Exception as err:
@@ -74,13 +83,19 @@ class ScannerView(wx.Panel):
             buffer = Buffer(length)
             bitmap.copy_to_buffer(buffer)
 
-            reader = DataReader.from_buffer(buffer)
-            bt = bytes((reader.read_byte() for _ in range(length)))
+            b_array = bytearray(CryptographicBuffer.copy_to_byte_array(buffer))
 
             self.buffer = wx.Bitmap.FromBufferRGBA(
-                bitmap.pixel_width, bitmap.pixel_height, bt
+                bitmap.pixel_width, bitmap.pixel_height, b_array
             )
-            wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_VIRTUAL_AREA)
+
+            client_cd = wx.WindowDC(self)
+            # Trying to flip the image horizontally. Not working yet.
+            # client_cd.SetTransformMatrix(self._matrix)
+            try:
+                wx.BufferedDC(client_cd, self.buffer, wx.BUFFER_VIRTUAL_AREA)
+            except Exception as err:
+                _LOGGER.exception(err)
 
         except Exception as err:
             _LOGGER.exception(err)

@@ -18,12 +18,19 @@ from winrt.windows.media.capture.frames import (
     MediaFrameSourceGroup,
     MediaFrameSourceKind,
 )
+from winrt.windows.security.cryptography import (
+    BinaryStringEncoding,
+    CryptographicBuffer,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def find_camera():
-    # di = DeviceInformation()
+    """Find camera in a very optimistic way.
+
+    Just assumes there actually is a camera.
+    """
 
     devices = await DeviceInformation.find_all_async(DeviceClass.VIDEO_CAPTURE)
     device = devices[0]
@@ -47,7 +54,11 @@ async def find_color_source():
 
     color_source = None
     for group in source_groups:
+        # _LOGGER.debug()
         for info in group.source_infos:
+            _LOGGER.debug(
+                "Available sources: %s ,info %s", info.media_stream_type, info
+            )
             if (
                 info.media_stream_type == MediaStreamType.VIDEO_RECORD
                 and info.source_kind == MediaFrameSourceKind.COLOR.value
@@ -63,6 +74,13 @@ def get_supported_frame_format(color_source):
 
         if format.video_format.width <= 800:
             return format
+
+
+def get_data_string(data):
+    result = CryptographicBuffer.convert_binary_to_string(
+        BinaryStringEncoding.UTF8, data
+    )
+    return result
 
 
 class WinrtCapture:
@@ -101,26 +119,12 @@ class WinrtCapture:
     ):
         try:
             _LOGGER.info("Barcode data scanned")
-            print(args.report.scan_data_label)
-            print(f"data: {args.report.scan_data}")
+            print(f"label : {get_data_string(args.report.scan_data_label)}")
+            print(f"data  : {get_data_string(args.report.scan_data)}")
+            # print(args.report.scan_data_label)
+            # print(f"data: {args.report.scan_data}")
         except Exception as err:
             _LOGGER.exception(err)
-
-    # async def start_capturing(self,video_device_id:str):
-    #     self._media_capture=MediaCapture()
-    #     settings = MediaCaptureInitializationSettings()
-    #     settings.video_device_id=video_device_id
-    #     settings.streaming_capture_mode=StreamingCaptureMode.VIDEO
-    #     settings.sharing_mode=MediaCaptureSharingMode.SHARED_READ_ONLY
-    #
-    #     await self._media_capture.initialize_async(settings)
-    #
-    #     memory_stream = InMemoryRandomAccessStream()
-    #     encoding_profile=MediaEncodingProfile.
-    #     encoding_profile= await MediaEncodingProfile.create_from_stream_async(memory_stream)
-    #
-    #
-    #     await self._media_capture.start_recode_to_stream_async(encoding_profile,memory_stream)
 
     async def start(self, frame_received_callback):
         _LOGGER.info("Starting webcam")
