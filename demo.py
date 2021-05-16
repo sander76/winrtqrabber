@@ -1,11 +1,9 @@
 import asyncio
 import logging
-from typing import List
 
 import wx
 from aio_wx_widgets.frame import DefaultFrame
 from aio_wx_widgets.widgets import button, text
-from pyzbar.pyzbar import Decoded
 from winrtqrabber.controller import Controller
 from winrtqrabber.view import ScannerView
 from winrtqrabber.winrtcapture import WinrtCapture
@@ -26,18 +24,16 @@ class MainWindow(DefaultFrame):
 
         self.add(button.async_button("start", self._on_start))
         self.add(button.async_button("stop", self._on_stop))
+
         self.scan_results: text.Text = self.add(text.Text("unknown"))
 
-    def _on_scan(self, result: List[Decoded]):
-        first_result = result[0]
-        self.scan_results.set_text(str(first_result.data))
-
     async def _on_start(self, event):
-        await self.controller.start_scan()
+        result = await self.controller.start_scan()
+        if result:
+            self.scan_results.set_text(result)
 
     async def _on_stop(self, event):
-
-        print("stopping")
+        _LOGGER.info("Stopping")
         await self.controller.stop_scan()
 
 

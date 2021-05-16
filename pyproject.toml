@@ -6,12 +6,23 @@ build-backend = "flit_core.buildapi"
 module = "winrtqrabber"
 author = "Sander Teunissen"
 author-email = "no_mail@nomail.com"
+description-file = "README.md"
 home-page = "https://github.com/sander76/qrabber"
-classifiers = ["License :: OSI Approved :: MIT License"]
-requires-python=">=3.7"
-requires=["aio-wx-widgets","winrt","pyzbar"]
-keywords=["wxpyton","winrt","webcam","scanner","qrcode","qr-code"]
+classifiers = ["License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"]
+requires-python = ">=3.7"
+requires = ["wxpython", "winrt"]
+keywords = "wxpyton,winrt,webcam,scanner,qrcode,qr-code"
 
 [tool.flit.metadata.requires-extra]
-test=["pytest","pytest-asyncio","pytest-mock"]
-dev = ["pylint","nox","pytest-cov","coverage[toml]>=5.0.3","pre-commit"]
+test = ["pytest", "pytest-asyncio", "pytest-mock"]
+dev = ["pylint", "nox", "pytest-cov", "coverage[toml]>=5.0.3", "pre-commit"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["tests", "ease_fabricator"]
