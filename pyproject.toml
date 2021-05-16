@@ -7,7 +7,7 @@ module = "winrtqrabber"
 author = "Sander Teunissen"
 author-email = "no_mail@nomail.com"
 description-file = "README.md"
-home-page = "https://github.com/sander76/qrabber"
+home-page = "https://github.com/sander76/winrtqrabber"
 classifiers = ["License :: OSI Approved :: MIT License",
     "Development Status :: 4 - Beta",
     "Operating System :: Microsoft :: Windows :: Windows 10",
