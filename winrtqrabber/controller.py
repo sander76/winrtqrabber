@@ -1,8 +1,7 @@
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyzbar.pyzbar import Decoded
     from winrtqrabber.view import ScannerView
 
 _LOGGER = logging.getLogger(__name__)
@@ -13,12 +12,10 @@ class Controller:
         self._model = model
         self.view = view
 
-    async def start_scan(self):
+    async def start_scan(self) -> str:
         resolution = await self._model.prepare_webcam()
         self.view.set_preview_size(*resolution)
-        await self._model.start(self.view.set_frame)
+        return await self._model.start(self.view.set_frame)
 
-    async def stop_scan(self, result: Optional["Decoded"] = None):
+    async def stop_scan(self):
         await self._model.stop()
-        if result:
-            print(result)

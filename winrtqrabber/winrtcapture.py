@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import logging
+from asyncio import Event
 from typing import Callable, Optional, Tuple
 
 from winrt.windows.devices.pointofservice import (
@@ -66,12 +69,11 @@ def get_supported_frame_format(color_source):
     formats = color_source.supported_formats
 
     for format in formats:
-
         if format.video_format.width <= 800:
             return format
 
 
-def get_data_string(data):
+def get_data_string(data) -> str:
     result = CryptographicBuffer.convert_binary_to_string(
         BinaryStringEncoding.UTF8, data
     )
@@ -84,12 +86,18 @@ class WinrtCapture:
     _media_frame_reader = None
     _barcode_scanner = None
     _ui_update: Optional[Callable[[bytearray], None]] = None
+    _scanned: Event
+    _result: str
 
-    async def start(self, frame_received_callback: Callable[[bytearray], None]):
+    async def start(self, frame_received_callback: Callable[[bytearray], None],) -> str:
+        self._scanned = Event()
         _LOGGER.info("Starting webcam")
-        await self._start_scanner()
         self._ui_update = frame_received_callback
+        await self._start_scanner()
         await self._start_preview()
+        await self._scanned.wait()
+        await self.stop()
+        return self._result
 
     async def prepare_webcam(self) -> Tuple[int, int]:
         """Prepare the webcam.
@@ -132,10 +140,12 @@ class WinrtCapture:
     def _on_data_received(
         self, sender: ClaimedBarcodeScanner, args: BarcodeScannerDataReceivedEventArgs
     ):
+        _LOGGER.info("Barcode data scanned")
         try:
-            _LOGGER.info("Barcode data scanned")
-            print(f"label : {get_data_string(args.report.scan_data_label)}")
-            print(f"data  : {get_data_string(args.report.scan_data)}")
+            self._result = get_data_string(args.report.scan_data_label)
+            _LOGGER.info("result : %s", self._result)
+            self._scanned.set()
+            _LOGGER.info(get_data_string(args.report.scan_data))
         except Exception as err:
             _LOGGER.exception(err)
 
@@ -203,5 +213,7 @@ class WinrtCapture:
             _LOGGER.exception(err)
 
     async def stop(self):
+        """Stop scanning."""
         await self._media_frame_reader.stop_async()
         await self._camera.disable_async()
+        self._media_frame_reader = None
