@@ -102,6 +102,7 @@ class WinrtCapture:
         await self._start_preview()
         await self._scanned.wait()
         await self.stop()
+        _LOGGER.info("Scan result %s", self._result)
         return self._result
 
     async def prepare_webcam(self) -> tuple[int, int]:
@@ -204,7 +205,7 @@ class WinrtCapture:
         bitmap = SoftwareBitmap.convert(
             bitmap, BitmapPixelFormat.RGBA8, BitmapAlphaMode.PREMULTIPLIED
         )
-
+        # todo: new buffer protocol to be used here.
         try:
             length = 4 * bitmap.pixel_height * bitmap.pixel_width
             buffer = Buffer(length)

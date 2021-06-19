@@ -1,8 +1,37 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 import wx
+from aio_wx_widgets.panels import panel
+from aio_wx_widgets.widgets.button import AioButton
+from aio_wx_widgets.widgets.text import Text
 
+if TYPE_CHECKING:
+    from winrtqrabber.controller import Controller
 _LOGGER = logging.getLogger(__name__)
+
+
+class TheView(panel.SimplePanel["Controller"]):
+    def __init__(self, parent: wx.Panel, controller: Controller):
+        super().__init__(parent, controller)
+
+        self.scanner_view = ScannerView(parent=self.ui_item, width=650, height=480)
+        self.add(self.scanner_view, create=False)
+        self.add(AioButton("start", self._on_start))  # type: ignore
+        self.add(AioButton("stop", self._on_stop))  # type: ignore
+        self.add(Text(binding=self.bind("scan_result")))
+
+    async def _on_start(self, event):  # type: ignore
+        await self.controller.setup_scanner()
+        self.scanner_view.set_preview_size(*self.controller.resolution)
+
+        await self.controller.start_scan(self.scanner_view.set_frame)
+
+    async def _on_stop(self, event):  # type: ignore
+        _LOGGER.info("Stopping")
+        await self.controller.stop_scan()
 
 
 class ScannerView(wx.Panel):
@@ -11,10 +40,10 @@ class ScannerView(wx.Panel):
     def __init__(
         self,
         parent,
-        mirror_x=True,
-        width=800,
-        height=600,
-        style=wx.NO_BORDER,
+        mirror_x: bool = True,
+        width: int = 800,
+        height: int = 600,
+        style: int = wx.NO_BORDER,
     ):
         """
 

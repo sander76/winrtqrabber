@@ -1,21 +1,25 @@
-import logging
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from winrtqrabber.view import ScannerView
+from typing import Callable
 
-_LOGGER = logging.getLogger(__name__)
+from winrtqrabber.winrtcapture import WinrtCapture
 
 
 class Controller:
-    def __init__(self, model, view: "ScannerView"):
+    def __init__(self, model: WinrtCapture):
         self._model = model
-        self.view = view
+        self.resolution = None
 
-    async def start_scan(self) -> str:
-        resolution = await self._model.prepare_webcam()
-        self.view.set_preview_size(*resolution)
-        return await self._model.start(self.view.set_frame)
+        # bindable property
+        self.scan_result = "unknown."
+
+    async def setup_scanner(self):
+        self.resolution = await self._model.prepare_webcam()
+
+    async def start_scan(self, ui_frame_updater: Callable[[bytearray], None]) -> str:
+
+        self.scan_result = await self._model.start(ui_frame_updater)
+        return self.scan_result
 
     async def stop_scan(self):
         await self._model.stop()
