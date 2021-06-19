@@ -18,4 +18,4 @@ From inside a virtual environment install the requirements:
 `pip install -r requirements.txt`
 
 Run the demo:
-`python demp.py`
+`python demo.py`

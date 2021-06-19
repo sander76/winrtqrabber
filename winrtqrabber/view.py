@@ -9,7 +9,12 @@ class ScannerView(wx.Panel):
     """Panel on which the webcam data is painted."""
 
     def __init__(
-        self, parent, mirror_x=True, width=800, height=600, style=wx.NO_BORDER,
+        self,
+        parent,
+        mirror_x=True,
+        width=800,
+        height=600,
+        style=wx.NO_BORDER,
     ):
         """
 

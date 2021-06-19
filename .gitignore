@@ -7,8 +7,10 @@ __pycache__/
 .idea
 # C extensions
 *.so
+.vscode
 
 # Distribution / packaging
+p38
 .Python
 build/
 develop-eggs/

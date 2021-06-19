@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from asyncio import Event
-from typing import Callable, Optional, Tuple
+from typing import Callable
 
 from winrt.windows.devices.pointofservice import (
     BarcodeScanner,
@@ -35,7 +35,7 @@ from winrt.windows.storage.streams import Buffer
 _LOGGER = logging.getLogger(__name__)
 
 
-async def get_barcode_scanner() -> Optional[BarcodeScanner]:
+async def get_barcode_scanner() -> BarcodeScanner | None:
     _LOGGER.info("Looking for an available barcode scanner.")
     scanner = await BarcodeScanner.get_default_async()
     if scanner:
@@ -77,6 +77,8 @@ def get_data_string(data) -> str:
     result = CryptographicBuffer.convert_binary_to_string(
         BinaryStringEncoding.UTF8, data
     )
+    if not isinstance(result, str):
+        raise TypeError("Expecting a string. Got %s", result)
     return result
 
 
@@ -85,11 +87,14 @@ class WinrtCapture:
     _media_capture = None
     _media_frame_reader = None
     _barcode_scanner = None
-    _ui_update: Optional[Callable[[bytearray], None]] = None
+    _ui_update: Callable[[bytearray], None] | None = None
     _scanned: Event
     _result: str
 
-    async def start(self, frame_received_callback: Callable[[bytearray], None],) -> str:
+    async def start(
+        self,
+        frame_received_callback: Callable[[bytearray], None],
+    ) -> str:
         self._scanned = Event()
         _LOGGER.info("Starting webcam")
         self._ui_update = frame_received_callback
@@ -99,7 +104,7 @@ class WinrtCapture:
         await self.stop()
         return self._result
 
-    async def prepare_webcam(self) -> Tuple[int, int]:
+    async def prepare_webcam(self) -> tuple[int, int]:
         """Prepare the webcam.
 
         Returns:
@@ -149,7 +154,7 @@ class WinrtCapture:
         except Exception as err:
             _LOGGER.exception(err)
 
-    async def _prepare_preview(self, video_device_id) -> Tuple[int, int]:
+    async def _prepare_preview(self, video_device_id) -> tuple[int, int]:
         self._media_capture = MediaCapture()
         group, color_source = await find_color_source()
 

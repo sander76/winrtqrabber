@@ -21,7 +21,7 @@ keywords = "wxpyton,winrt,webcam,scanner,qrcode,qr-code"
 
 [tool.flit.metadata.requires-extra]
 test = ["pytest", "pytest-asyncio", "pytest-mock"]
-dev = ["pylint", "nox", "pytest-cov", "coverage[toml]>=5.0.3", "pre-commit"]
+dev = ["pylint", "nox", "pytest-cov", "coverage[toml]>=5.0.3", "pre-commit","mypy"]
 
 [tool.isort]
 profile = "black"
